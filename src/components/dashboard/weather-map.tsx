@@ -129,9 +129,14 @@ export function WeatherMap() {
             return (
               <Marker key={city} position={coords} icon={icon}>
                 <Tooltip direction="top" offset={[0, -36]} opacity={1}>
-                  <span style={{ fontFamily: "var(--font-heading)", fontSize: "13px", fontWeight: 600 }}>
-                    {city}
-                  </span>
+                  <div style={{ fontFamily: "var(--font-heading)", fontSize: "13px", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ fontWeight: 700 }}>{city}</span>
+                    {metric && (
+                      <span style={{ fontWeight: 700, color }}>
+                        {metric.temperature}°C
+                      </span>
+                    )}
+                  </div>
                 </Tooltip>
                 <Popup>
                   <div style={{ fontFamily: "var(--font-heading)", minWidth: "140px" }}>
