@@ -70,17 +70,30 @@ export default function DashboardPage() {
     }
   }, [loadMetrics]);
 
+  const seed = useCallback(async (c: string) => {
+    setSyncing(true);
+    try {
+      await fetch("/api/seed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ city: c }),
+      });
+      await loadMetrics(c);
+    } finally {
+      setSyncing(false);
+    }
+  }, [loadMetrics]);
+
   useEffect(() => {
     loadWeather(city);
     loadMetrics(city).then(async () => {
-      // Auto-sync si no hay datos históricos
       const res = await fetch(`/api/metrics?city=${encodeURIComponent(city)}`);
       const json = await res.json();
-      if (json.success && json.data.length === 0) {
-        await sync(city);
+      if (json.success && json.data.length < 2) {
+        await seed(city);
       }
     });
-  }, [city, loadWeather, loadMetrics, sync]);
+  }, [city, loadWeather, loadMetrics, sync, seed]);
 
   const latest = metrics[0] ?? null;
 
