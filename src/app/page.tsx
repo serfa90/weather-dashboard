@@ -5,9 +5,13 @@ import dynamic from "next/dynamic";
 import { WeatherCard } from "@/components/dashboard/weather-card";
 import { MetricsGrid } from "@/components/dashboard/metrics-grid";
 import { ThemeToggle } from "@/components/dashboard/theme-toggle";
+import { UvIndexCard, AqiCard } from "@/components/dashboard/uv-aqi-card";
+import { ForecastCard } from "@/components/dashboard/forecast-card";
 import { Button } from "@/components/ui/button";
 import { ARGENTINE_CITIES, ArgenteCity, WeatherData } from "@/types/weather";
 import type { WeatherMetric } from "@/lib/db/schema";
+import type { UvAqiData } from "@/lib/uv-aqi-api";
+import type { DayForecast } from "@/lib/forecast-api";
 
 const CitySelector = dynamic(
   () => import("@/components/dashboard/city-selector").then((m) => m.CitySelector),
@@ -30,8 +34,12 @@ export default function DashboardPage() {
   const [city, setCity] = useState<ArgenteCity>(ARGENTINE_CITIES[0]);
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [metrics, setMetrics] = useState<WeatherMetric[]>([]);
+  const [uvAqi, setUvAqi] = useState<UvAqiData | null>(null);
+  const [forecast, setForecast] = useState<DayForecast[]>([]);
   const [loadingWeather, setLoadingWeather] = useState(false);
   const [loadingMetrics, setLoadingMetrics] = useState(false);
+  const [loadingUvAqi, setLoadingUvAqi] = useState(false);
+  const [loadingForecast, setLoadingForecast] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
   const loadWeather = useCallback(async (c: string) => {
@@ -70,6 +78,28 @@ export default function DashboardPage() {
     }
   }, [loadMetrics]);
 
+  const loadForecast = useCallback(async (c: string) => {
+    setLoadingForecast(true);
+    try {
+      const res = await fetch(`/api/forecast?city=${encodeURIComponent(c)}`);
+      const json = await res.json();
+      if (json.success) setForecast(json.data);
+    } finally {
+      setLoadingForecast(false);
+    }
+  }, []);
+
+  const loadUvAqi = useCallback(async (c: string) => {
+    setLoadingUvAqi(true);
+    try {
+      const res = await fetch(`/api/uv-aqi?city=${encodeURIComponent(c)}`);
+      const json = await res.json();
+      if (json.success) setUvAqi(json.data);
+    } finally {
+      setLoadingUvAqi(false);
+    }
+  }, []);
+
   const seed = useCallback(async (c: string) => {
     setSyncing(true);
     try {
@@ -86,6 +116,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     loadWeather(city);
+    loadUvAqi(city);
+    loadForecast(city);
     loadMetrics(city).then(async () => {
       const res = await fetch(`/api/metrics?city=${encodeURIComponent(city)}`);
       const json = await res.json();
@@ -93,7 +125,7 @@ export default function DashboardPage() {
         await seed(city);
       }
     });
-  }, [city, loadWeather, loadMetrics, sync, seed]);
+  }, [city, loadWeather, loadMetrics, loadUvAqi, loadForecast, sync, seed]);
 
   const latest = metrics[0] ?? null;
 
@@ -123,6 +155,13 @@ export default function DashboardPage() {
         <WeatherCard data={weather} loading={loadingWeather} />
 
         <MetricsGrid latest={latest} loading={loadingMetrics || syncing} />
+
+        <ForecastCard data={forecast} loading={loadingForecast} />
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <UvIndexCard data={uvAqi} loading={loadingUvAqi} />
+          <AqiCard data={uvAqi} loading={loadingUvAqi} />
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <TemperatureChart data={metrics} />
